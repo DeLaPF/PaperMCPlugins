@@ -3,6 +3,7 @@ package me.alafya.proto;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import me.alafya.proto.commands.FindAndSet;
+import me.alafya.proto.commands.Permissions;
 import me.alafya.proto.listeners.CreeperProtection;
 import me.alafya.proto.listeners.Gravestone;
 import me.alafya.proto.listeners.Parry;
@@ -14,10 +15,10 @@ public class Main extends JavaPlugin {
     FindAndSet findAndSet;
     Gravestone gravestone;
     VeinMiner veinMiner;
+    Permissions permissions;
 
-    //TODO: permissions plugin using serialization of HashMap<UUID, Set<String>>
+    // TODO: permissions plugin using serialization of HashMap<UUID, Set<String>>
     // where the set contains strings of permissions
-    // TODO: add damage to items when veinMining
     @Override
     public void onEnable() {
         super.onEnable();
@@ -26,6 +27,7 @@ public class Main extends JavaPlugin {
         gravestone = new Gravestone(this);
         new CreeperProtection(this);
         veinMiner = new VeinMiner(this);
+        permissions = new Permissions(this);
         loadData();
     } 
 
@@ -39,9 +41,13 @@ public class Main extends JavaPlugin {
     // i.e. locations HashMap in FindAndSet
     private void loadData() {
         veinMiner.loadData();
+        findAndSet.loadData();
+        permissions.loadData();
     }
 
     private void saveData() {
         veinMiner.saveData();
+        findAndSet.saveData();
+        permissions.saveData();
     }
 }

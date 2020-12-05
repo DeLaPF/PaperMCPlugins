@@ -106,4 +106,12 @@ public class FindAndSet implements CommandExecutor {
             "y: " + location.getBlockY() + " \n" +
             "z: " + location.getBlockZ() + " \n");
     }
+
+    public void loadData() {
+
+    }
+    
+    public void saveData() {
+
+    }
 }

@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Queue;
+import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 
@@ -20,10 +21,13 @@ import org.bukkit.block.BlockFace;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.Damageable;
 
 import me.alafya.proto.Main;
 
@@ -147,6 +151,7 @@ public class VeinMiner implements Listener, CommandExecutor {
         Material type = e.getBlock().getType();
         int blocksSearched = 0;
         Set<Block> visited = new HashSet<>();
+        ItemStack tool =  e.getPlayer().getInventory().getItemInMainHand();
 
         while (!queue.isEmpty() && blocksSearched < 320) {
             Block curBlock = queue.remove();
@@ -154,8 +159,11 @@ public class VeinMiner implements Listener, CommandExecutor {
             if (curBlock.getType() != type || visited.contains(curBlock))
                 continue;
 
-            curBlock.breakNaturally(e.getPlayer().getInventory().getItemInMainHand());
-            e.getPlayer().getInventory().getItemInMainHand().getItemMeta();
+            if (tool.getItemMeta() instanceof Damageable && !damageTool(tool)) {
+                e.getPlayer().sendMessage("Warning: Halting VeinMiner as item will break");
+                return;
+            }
+            curBlock.breakNaturally(tool);
 
             // add all adjacent blocks to queue
             queue.add(curBlock.getRelative(BlockFace.UP));
@@ -174,6 +182,7 @@ public class VeinMiner implements Listener, CommandExecutor {
 
     private void handleAOE(BlockBreakEvent e) {
         Material type = e.getBlock().getType();
+        ItemStack tool =  e.getPlayer().getInventory().getItemInMainHand();
 
         BlockFace frontFace = e.getPlayer().getTargetBlockFace(8);
         BlockFace rightFace = BlockFace.EAST;
@@ -242,8 +251,14 @@ public class VeinMiner implements Listener, CommandExecutor {
                 for (int x = 0; x < 4; x++) {
                     if (x != 0)
                         curBlock = curBlock.getRelative(rightFace);
-                    if (curBlock.getType() == type)
-                        curBlock.breakNaturally(e.getPlayer().getInventory().getItemInMainHand());
+
+                    if (curBlock.getType() == type) {
+                        if (tool.getItemMeta() instanceof Damageable && !damageTool(tool)) {
+                            e.getPlayer().sendMessage("Warning: Halting VeinMiner as item will break");
+                            return;
+                        }
+                        curBlock.breakNaturally(tool);
+                    }
                 }
 
                 curBlock = resetX;
@@ -251,6 +266,20 @@ public class VeinMiner implements Listener, CommandExecutor {
 
             curBlock = resetY;
         }
+    }
+
+    // TODO: Take into account unbreaking enchantment (unless its just added to dur)
+    private boolean damageTool(ItemStack tool) {
+        if (tool.getType().getMaxDurability() - ((Damageable)tool).getDamage() == 1)
+            return false;
+
+        int level = tool.getEnchantmentLevel(Enchantment.DURABILITY);
+        Random rand = new Random();
+        int damage = rand.nextInt(level) + 1 == 1 ? 1 : 0;
+        
+        ((Damageable)tool).setDamage(((Damageable)tool).getDamage() + damage);
+
+        return true;
     }
     
 }
