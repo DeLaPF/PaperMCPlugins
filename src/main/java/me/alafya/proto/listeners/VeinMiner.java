@@ -127,15 +127,9 @@ public class VeinMiner implements Listener, CommandExecutor {
         if (!e.getPlayer().isSneaking() || e.getPlayer() == null)
             return;
 
-        UUID uuid = e.getPlayer().getUniqueId();
-
-        // add players to hashmap
-        if (!hasVeinMinerEnabled.contains(uuid)) {
-            e.getPlayer().sendMessage("use /vein enable to enable VeinMiner");
+        if (!hasVeinMinerEnabled.contains(e.getPlayer().getUniqueId()))
             return;
-        }
 
-        // cancle normal block break event
         e.setCancelled(true);
 
         if (veins.contains(e.getBlock().getType()))
@@ -268,16 +262,18 @@ public class VeinMiner implements Listener, CommandExecutor {
         }
     }
 
-    // TODO: Take into account unbreaking enchantment (unless its just added to dur)
+    // TODO: Take into account unbreaking enchantment
     private boolean damageTool(ItemStack tool) {
-        if (tool.getType().getMaxDurability() - ((Damageable)tool).getDamage() == 1)
+        if (tool.getType().getMaxDurability() - ((Damageable)tool.getItemMeta()).getDamage() == 1)
             return false;
 
-        int level = tool.getEnchantmentLevel(Enchantment.DURABILITY);
+        int level = Math.max(tool.getEnchantmentLevel(Enchantment.DURABILITY), 0);
+        level = 3;
         Random rand = new Random();
         int damage = rand.nextInt(level) + 1 == 1 ? 1 : 0;
+        damage = 1;
         
-        ((Damageable)tool).setDamage(((Damageable)tool).getDamage() + damage);
+        ((Damageable)tool.getItemMeta()).setDamage(((Damageable)tool.getItemMeta()).getDamage() + damage);
 
         return true;
     }

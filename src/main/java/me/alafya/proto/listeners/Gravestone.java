@@ -1,5 +1,12 @@
 package me.alafya.proto.listeners;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -27,9 +34,10 @@ import org.bukkit.inventory.ItemStack;
 
 import me.alafya.proto.Main;
 
-public class Gravestone implements Listener {
+public class Gravestone implements Listener, Serializable {
 
-    Map<Block, GravestoneContents> gravestones;
+    private static final long serialVersionUID = 8498773530816769289L;
+    Map<Location, GravestoneContents> gravestones;
 
     public Gravestone(Main plugin) {
         Bukkit.getPluginManager().registerEvents(this, plugin);
@@ -54,7 +62,7 @@ public class Gravestone implements Listener {
         for (ItemStack item : playerItems)
             if (item != null) contents.getItems().add(item);
 
-        gravestones.put(graveSpawnBlock, contents);
+        gravestones.put(graveSpawnBlock.getLocation(), contents);
         e.getDrops().clear();
         e.setDroppedExp(0);
     }
@@ -62,15 +70,16 @@ public class Gravestone implements Listener {
     @EventHandler
     public void onGravestoneBreak(BlockBreakEvent e) {
         Block grave = e.getBlock();
+        Location location = grave.getLocation();
         Player p = e.getPlayer();
 
-        if (p == null || grave.getType() != Material.PLAYER_HEAD || !gravestones.containsKey(grave))
+        if (p == null || grave.getType() != Material.PLAYER_HEAD || !gravestones.containsKey(location))
             return;
 
-        GravestoneContents contents = gravestones.get(grave);
+        GravestoneContents contents = gravestones.get(location);
 
         for (ItemStack itemStack : contents.getItems())
-            if (itemStack != null) p.getWorld().dropItemNaturally(grave.getLocation(), itemStack);
+            if (itemStack != null) p.getWorld().dropItemNaturally(location, itemStack);
         
         e.setExpToDrop(contents.getExp());
 
@@ -121,11 +130,70 @@ public class Gravestone implements Listener {
         return l.getBlock();
     }
 
-    class GravestoneContents {
+    public void loadData() {
+        File file = new File("gravestones.ser");
+        if (!file.isFile()) {
+            try {
+                file.createNewFile();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
 
-        private List<ItemStack> items;
+        try {
+            FileInputStream fis = new FileInputStream(file);
+            ObjectInputStream ois = new ObjectInputStream(fis);
+
+            // supressed because file should only be altered by this plugin
+            // will warn on first run due to empty file
+            @SuppressWarnings("unchecked")
+            Map<Location, GravestoneContents> temp = deserialize((Map<Map<String,Object>, GravestoneContents>)ois.readObject());
+            // does not allow for direct assigning to toggleVeinMiner for some reason?
+            gravestones = temp;
+
+            ois.close();
+            fis.close();
+        } catch (IOException ioe) {
+            ioe.printStackTrace();
+        } catch (ClassNotFoundException c) {
+            c.printStackTrace();
+        }
+    }
+    
+    public void saveData() {
+        try {
+            FileOutputStream fos = new FileOutputStream("gravestones.ser");
+            ObjectOutputStream oos = new ObjectOutputStream(fos);
+            oos.writeObject(serialize());
+            oos.close();
+            fos.close();
+        } catch (IOException ioe) {
+            ioe.printStackTrace();
+        }
+    }
+
+    private Map<Map<String, Object>, GravestoneContents> serialize() {
+        Map<Map<String, Object>, GravestoneContents> serialized = new HashMap<>();
+        for (Map.Entry<Location, GravestoneContents> entry : gravestones.entrySet())
+            serialized.put(entry.getKey().serialize(), entry.getValue());
+
+        return serialized;
+    }
+
+    private Map<Location, GravestoneContents> deserialize(Map<Map<String, Object>, GravestoneContents> serialized) {
+        Map<Location, GravestoneContents> deserialized = new HashMap<>();
+        for (Map.Entry<Map<String, Object>, GravestoneContents> entry : serialized.entrySet())
+            deserialized.put(Location.deserialize(entry.getKey()), entry.getValue());
+        
+        return deserialized;
+    }
+
+    class GravestoneContents implements Serializable {
+
+        private static final long serialVersionUID = 5295419285627241855L;
+        private transient List<ItemStack> items;
         private int exp;
-        private Player owner;
+        private transient Player owner;
 
         public GravestoneContents(Player p, int exp) {
             items = new ArrayList<>();
